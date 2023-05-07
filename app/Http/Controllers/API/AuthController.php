@@ -26,6 +26,14 @@ class AuthController extends BaseController
         }
     }
 
+    public function logout(Request $request)
+    {
+        $request->user()->currentAccessToken()->delete();
+        return $this->handleResponse(null, 'User logged-out!');
+    }
+
+
+
     public function register(Request $request)
     {
 

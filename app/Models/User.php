@@ -21,6 +21,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'is_admin',
+        'avatar',
     ];
 
     /**
@@ -41,4 +43,12 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+    /**
+     * Get the user's avatar.
+     */
+    public function getAvatarAttribute($value): string
+    {
+        return !$value ?  'https://www.gravatar.com/avatar/' . md5(strtolower(trim($this->email))) . '?s=200' : asset('storage/avatars/' . $value);
+    }
 }
