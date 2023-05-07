@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\API\BaseController as BaseController;
-use App\Jobs\SyncUsersFromAPI;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 
 
 class AuthController extends BaseController
@@ -27,39 +28,41 @@ class AuthController extends BaseController
 
     public function register(Request $request)
     {
-        $request->validate([
-            'name' => 'required',
-            'email' => 'required|email',
-            'password' => 'required',
-            'confirm_password' => 'required|same:password',
-        ]);
 
+        try {
+            //Validated
+            $validateUser = Validator::make($request->all(),
+                [
+                    'name' => 'required',
+                    'email' => 'required|email|unique:users,email',
+                    'password' => 'required'
+                ]);
 
-        $input = $request->all();
-        $input['password'] = bcrypt($input['password']);
-        $user = User::create($input);
-        $success['token'] = $user->createToken('LaravelSanctumAuth')->plainTextToken;
-        $success['name'] = $user->name;
+            if($validateUser->fails()){
+                return response()->json([
+                    'status' => false,
+                    'message' => 'validation error',
+                    'errors' => $validateUser->errors()
+                ], 401);
+            }
 
-        return $this->handleResponse($success, 'User successfully registered!');
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password)
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'User Created Successfully',
+                'token' => $user->createToken("API TOKEN")->plainTextToken
+            ], 200);
+
+        } catch (\Throwable $th) {
+            return response()->json([
+                'status' => false,
+                'message' => $th->getMessage()
+            ], 500);
+        }
     }
-
-    /**
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function jobSyncFromAPI()
-    {
-        SyncUsersFromAPI::dispatch();
-        return $this->handleResponse('', 'Задача поставлена в очередь.');
-    }
-
-    /**
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function jobSyncFromAPINow()
-    {
-        SyncUsersFromAPI::dispatchSync();
-        return $this->handleResponse('', 'Задача запущена немедленно.');
-    }
-
 }
